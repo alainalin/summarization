@@ -1,14 +1,19 @@
 import os 
 import evaluate #from hugging face 
-from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
+# from mistralai.client import MistralClient
+# from mistralai.models.chat_completion import ChatMessage
+from llama_index.llms.mistralai import MistralAI
+from llama_index.core.llms import ChatMessage
+from openai import OpenAI
 
 data_path = '/mnt/nfs/CanarySummarization/Data'
 
 ## models
 # api key? mistral account? 
-model = ''
-client = MistralClient()
+# model = ''
+# client = MistralClient()
+
+# llm = MistralAI(model=model)
 
 ## NLP metrics
 # poor correlation with human judgement, fallacy of references
@@ -25,12 +30,27 @@ def promptModel(prompt: str) -> str:
 
     messages = [ChatMessage(role='system', content=model_spec), ChatMessage(role='user', content=prompt)]
 
-    response = client.chat(
-        model=model, 
-        messages=messages,
-    )
+    # response = client.chat(
+    #     model=model, 
+    #     messages=messages,
+    # )
+    # return response.choices[0].message.content
 
-    return response.choices[0].message.content
+    return MistralAI().chat(messages)
+
+client = OpenAI()
+
+def response(prompt):
+    '''
+    prompt :: string, prompt to give to the client
+
+    return string, the response of the client to the given prompt (summarization)
+    '''
+    response = client.chat.completions.create(
+                    model="gpt-4-turbo", 
+                    messages=[{"role": "user", "content": prompt}]
+                ).choices[0].message.content
+    return response
 
 
 
