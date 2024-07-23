@@ -3,12 +3,12 @@ import xml.etree.ElementTree as ET
 import evaluate #from hugging face 
 # from mistralai.client import MistralClient
 # from mistralai.models.chat_completion import ChatMessage
-from llama_index.llms.mistralai import MistralAI
-from llama_index.core.llms import ChatMessage
+# from llama_index.llms.mistralai import MistralAI
+# from llama_index.core.llms import ChatMessage
 from openai import OpenAI
 
 # data_path = '/mnt/nfs/CanarySummarization/Data'
-data_path = 'C:/Users/alain/Research/MedDB/data/training-PHI-Gold-Set1'   
+data_path = "C:/Users/alain/Research/summarization/example_data_one_patient"
 
 ## models
 # api key? mistral account? 
@@ -38,9 +38,9 @@ def getData(path: str) -> list[str]:
             reports.append(text_content)      
     return reports
 
-def update(data, file):
+def output(data, file):
     '''
-    update the dict stored in file, maps {prompt: summary}
+    output data into specified file
     '''
     with open(file, 'w') as outfile:
         outfile.write(json.dumps(data, indent=4))
@@ -66,19 +66,24 @@ def prompt(sysPrompt: str, userPrompt: str) -> str:
     return response
 
 def main(): 
-    ehr = "'''".join(getData(data_path))
+    # ehr = "'''".join(getData(data_path))
+    ehr = getData(data_path)
     sysPrompts = ['You are a medical professional', 'You are a neurologist', 'You are a medical professional specializing in neurology']
     userPrompts = ['Summarize the medical history', 'Summarize the neurological medical history', "Summarize the patient's medical history related to CAD"]
 
+    results = []
     for sp in sysPrompts: 
         for up in userPrompts: 
-            summary = prompt(sp, up + ehr)
+            # summary = prompt(sp, up + "of the following reports separated by ''': '''" + ehr[0] + "'''" + ehr[1] + "'''")
+            summary = prompt(sp, up + ' of the following report: ' + ehr[0])
             info = {
                 'systemPrompt': sp,
                 'userPrompt': up,
                 'summary': summary
             }
-            update(info, 'output.json')
+            results.append(info)
+    # update(results, 'output-2records.json')
+    output(results, 'output-1record.json')
 
 main()
 
