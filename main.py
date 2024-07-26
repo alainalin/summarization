@@ -16,6 +16,7 @@ bertscore = evaluate.load('bertscore') # semantic/correctness
 def getData(path: str, start=0, stop=None) -> list[str]: 
     '''
     path :: directory path to the dataset to extract from
+
     start :: int, start getting reports at this index (inclusive, 0 index)
     stop :: int, stop getting reports at this index (exclusive, 0 index)
 
