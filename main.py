@@ -1,21 +1,11 @@
 import os, json
 import xml.etree.ElementTree as ET
-import evaluate #from hugging face 
-# from mistralai.client import MistralClient
-# from mistralai.models.chat_completion import ChatMessage
-# from llama_index.llms.mistralai import MistralAI
-# from llama_index.core.llms import ChatMessage
-from openai import OpenAI
+import evaluate 
+
+model_path = '/mnt/nfs/CanaryModels/Data'
 
 # data_path = '/mnt/nfs/CanarySummarization/Data'
-data_path = "C:/Users/alain/Research/summarization/example_data_one_patient"
-
-## models
-# api key? mistral account? 
-# model = ''
-# client = MistralClient()
-
-# llm = MistralAI(model=model)
+data_path = '/home/alaina/Documents/summarization/example_data_one_patient'
 
 ## NLP metrics
 bleu = evaluate.load('bleu') # completeness 
@@ -23,19 +13,30 @@ rouge = evaluate.load('rouge') # most commonly used
 bertscore = evaluate.load('bertscore') # semantic/correctness
 # medcon or use knowledge base to measure conceptual correctness
 
-def getData(path: str) -> list[str]: 
+def getData(path: str, start=0, stop=None) -> list[str]: 
     '''
-    path :: directory path to the dataset
+    path :: directory path to the dataset to extract from
+    start :: int, start getting reports at this index (inclusive, 0 index)
+    stop :: int, stop getting reports at this index (exclusive, 0 index)
 
-    return list of medical reports in the path folder 
+    return data from [start, stop) indices
     '''
     reports = []
-    for filename in os.listdir(path):
-        with open(os.path.join(path, filename), 'r', encoding='utf-8') as file:
+    listdir = os.listdir(dataset)
+
+    if stop is None: 
+        stop = len(listdir)
+
+    if stop < start or start >= len(listdir) or stop <= 0 or stop > len(listdir): 
+        raise ValueError('Invalid bounds to fetch data') 
+
+    for i in range(start, stop):
+        with open(os.path.join(dataset, listdir[i]), 'r', encoding='utf-8') as file:
             xml_text = file.read()
             root = ET.fromstring(xml_text)
-            text_content = root.find('.//TEXT').text
-            reports.append(text_content)      
+            text_content = root.find(".//TEXT").text
+            reports.append(text_content)
+            
     return reports
 
 def output(data, file):
