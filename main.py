@@ -1,8 +1,10 @@
-import os, json
+import os
+import json
 import xml.etree.ElementTree as ET
 import torch
 import evaluate 
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM, LlamaTokenizer
+from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM, LlamaTokenizerFast, PreTrainedTokenizerFast
+from transformers import StoppingCriteriaList, EosTokenCriteria
 
 # data_path = '/mnt/nfs/CanarySummarization/Data'
 data_path = '/home/alaina/Documents/summarization/example_data_one_patient'
@@ -11,49 +13,8 @@ data_path = '/home/alaina/Documents/summarization/example_data_one_patient'
 # tokenizer_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct/tokenizer.model'
 converted_model_path = '/home/alaina/Documents/summarization/llama'
 
-model = LlamaForCausalLM.from_pretrained(converted_model_path, device_map='auto',)
-tokenizer = LlamaTokenizer.from_pretrained(converted_model_path)
-
-def testGen(): 
-    tokenizer.pad_token = tokenizer.eos_token  # Most LLMs don't have a pad token by default
-    model_inputs = tokenizer(['Summarize the following advice: You can make a simple Caprese salad with fresh tomatoes, basil, and mozzarella cheese. Alternatively, you can make a bruschetta by toasting some bread, topping it with diced tomatoes, basil, and mozzarella cheese, and drizzling with olive oil'], return_tensors="pt", padding=True)
-
-    generated_ids = model.generate(**model_inputs, max_new_tokens=20)
-    print(tokenizer.batch_decode(generated_ids, skip_special_tokens=True))
-
-def testPipe(): 
-    pipe = pipeline(
-        'text-generation', # summarization is not supported for LlamaForCasualLM
-        model=model, 
-        tokenizer=tokenizer, 
-        torch_dtype=torch.float16, 
-        device_map='auto',
-    )
-
-    chat = [
-        {'role': 'system', 'content': 'You answer with the most minimal and essential information, providing concise and coherent response without extra word fluff.'}, 
-        {'role': 'user', 'content': 'Summarize the following advice'}, 
-        {'role': 'user', 'content' : 'You can make a simple Caprese salad with fresh tomatoes, basil, and mozzarella cheese. Alternatively, you can make a bruschetta by toasting some bread, topping it with diced tomatoes, basil, and mozzarella cheese, and drizzling with olive oil'}
-    ]
-
-    tokenized_chat = tokenizer.apply_chat_template(chat, tokenize=True)
-
-    sequences = pipe(
-        tokenized_chat,
-        num_return_sequences=1,
-        eos_token_id=tokenizer.eos_token_id,
-        max_new_tokens=50,
-        truncation=True,
-        temperature=0.1, 
-        do_sample=True
-    )
-    for seq in sequences:
-        print(f"{seq['generated_text']}")
-
-testGen()
-testPipe()
-# text-generation task --> not summarizing even with explicit prompting 
-# run inference locally with script? llama-cpp-python requires .gguf file (other documentation depreciated)
+model = AutoModelForCausalLM.from_pretrained(converted_model_path, device_map='auto',)
+tokenizer = PreTrainedTokenizerFast.from_pretrained(converted_model_path)
 
 #############################################################################################
 
@@ -94,44 +55,88 @@ def getData(path: str, start=0, stop=None) -> list[str]:
 
 def output(data, filename: str):
     '''
-    output data into filename (create new file or rewrite existing if name already in use)
+    data :: data to convert into and store in json file
+    filename :: name of file to write to (create new file or rewrite existing if name already in use)
+    
+    return nothing, output data into filename 
     '''
     with open(filename, 'w') as outfile:
         outfile.write(json.dumps(data, indent=4))
 
-def prompt(sysPrompt: str, userPrompt: str) -> str:
+def read(filename: str) -> list:
     '''
-    sysPrompt :: desired behavior/role of the model, domain specification, ex. 'doctor'  
-    userPrompt :: instructions to model, ex. 'summarize the following documents'
+    filename :: path json file to read and return data from 
 
-    return model response to prompts (summary)
+    return list of data, read data from filename
     '''
-    # denote assistant messages for in-context learning? or wrap in userPrompt
-    # adjust temperature to be lower? default 1
-    response = model.chat.completions.create(
-                    model='gpt-4-turbo', 
-                    messages=[
-                        {'role': 'system', 'content': sysPrompt},
-                        {'role': 'user', 'content': userPrompt}
-                    ]
-                ).choices[0].message.content
-    return response
+    with open(filename, 'r') as file:
+        data = json.load(file)
 
-def main(): 
+    return data 
+
+#############################################################################################
+
+def makePrompts() -> list[list[dict]]:
+    '''
+    return list of prompts where each prompt (chat history) 
+           is structured as a list of dict/json (each dict being a system, user, or assistant message)
+    '''
     # ehr = "'''".join(getData(data_path))
     ehr = getData(data_path)
-    sysPrompts = ['You are a medical professional', 'You are a neurologist', 'You are a medical professional specializing in neurology']
-    userPrompts = ['Summarize the medical history', 'Summarize the neurological medical history', "Summarize the patient's medical history related to CAD"]
 
-    results = []
-    for sp in sysPrompts: 
-        for up in userPrompts: 
-            # summary = prompt(sp, up + "of the following reports separated by ''': '''" + ehr[0] + "'''" + ehr[1] + "'''")
-            summary = prompt(sp, up + ' of the following report: ' + ehr[0])
-            info = {
-                'systemPrompt': sp,
-                'userPrompt': up,
-                'summary': summary
-            }
-            results.append(info)
-    output(results, 'output-1record.json')
+    sysPrompts = ['You are a medical professional', 'You are a neurologist']
+    userPrompts = ['Summarize the medical history: ', "Summarize the medical history related to CAD: "]
+
+    prompts = []
+
+    for sp in sysPrompts:
+        for up in userPrompts:
+            p = [
+                {'role': 'system', 'content': sp}, 
+                {'role': 'user', 'content': up}, 
+                {'role': 'user', 'content': ehr[0]}
+            ]
+            prompts.append(p)
+    
+    return prompts
+
+def prompt(pipe, messages: list[dict]) -> list[dict]: 
+    '''
+    messages :: chat history of system, user, and/or assistant messages used to prompt model 
+
+    return model response, completed chat history
+    '''
+    # tokenized_chat = tokenizer.apply_chat_template(chat, tokenize=True)
+
+    seq = pipe(
+        messages,
+        num_return_sequences=1,
+        eos_token_id=tokenizer.eos_token_id,
+        max_new_tokens=500,
+        truncation=True,
+        temperature=0.1, 
+        # do_sample=False,
+        add_special_tokens=False, 
+        repetition_penalty=1.1, 
+    )
+
+    return seq[0]['generated_text']
+
+def main(): 
+    pipe = pipeline(
+        'text-generation', # summarization pipeline not supported for llama
+        model=model, 
+        tokenizer=tokenizer, 
+        torch_dtype=torch.float16, 
+        device_map='auto',
+    )
+
+    prompts = makePrompts()
+
+    summaries = []
+    for p in prompts: 
+        summaries.append(prompt(pipe, p))
+
+    output(summaries, 'output_one_record_gen.json')
+
+main()
