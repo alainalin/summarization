@@ -4,3 +4,4 @@ llama/
 transformers/
 
 output*.json
+prompts*
