@@ -7,14 +7,15 @@ from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM, LlamaFor
 from transformers import StoppingCriteriaList, EosTokenCriteria
 
 # data_path = '/mnt/nfs/CanarySummarization/Data'
-data_path = '/home/alaina/Documents/summarization/example_data_one_patient'
+data_path = '/home/alaina/Sandbox/summarization/example_data_one_patient'
 
 # model_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct'
 # tokenizer_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct/tokenizer.model'
-converted_model_path = '/home/alaina/Documents/summarization/llama'
+converted_model_path = '/home/alaina/Sandbox/summarization/llama'
 
 model = AutoModelForCausalLM.from_pretrained(converted_model_path, device_map='auto',)
-tokenizer = PreTrainedTokenizerFast.from_pretrained(converted_model_path)
+tokenizer = PreTrainedTokenizerFast.from_pretrained(converted_model_path, padding_side='left')
+tokenizer.pad_token = tokenizer.eos_token
 
 #############################################################################################
 
@@ -107,20 +108,41 @@ def prompt(pipe, messages: list[dict]) -> list[dict]:
     return model response, completed chat history
     '''
     # tokenized_chat = tokenizer.apply_chat_template(chat, tokenize=True)
+    # no chat template in tokenizer_config.json --> add? 
 
     seq = pipe(
         messages,
         num_return_sequences=1,
         eos_token_id=tokenizer.eos_token_id,
-        max_new_tokens=500,
+        max_new_tokens=1024,
         truncation=True,
         temperature=0.1, 
-        # do_sample=False,
-        add_special_tokens=False, 
-        repetition_penalty=1.1, 
+        do_sample=False,
+          repetition_penalty=1.1, 
     )
 
     return seq[0]['generated_text']
+
+def gen(messages: list[dict]): 
+    model_inputs = tokenizer.apply_chat_template(
+        messages, 
+        add_generation_prompt=True, 
+        return_tensors='pt'
+    )#.to(model.device) #.to('cuda')
+    
+    attention_mask = torch.ones_like(model_inputs)
+   
+    generated_ids = model.generate(
+        model_inputs, 
+        eos_token_id=tokenizer.eos_token_id,
+        max_new_tokens=1024, 
+        do_sample=False,
+        attention_mask=attention_mask
+    )
+    
+    model_outputs = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+    return model_outputs
 
 def main(): 
     pipe = pipeline(
@@ -133,10 +155,13 @@ def main():
 
     prompts = makePrompts()
 
-    summaries = []
-    for p in prompts: 
-        summaries.append(prompt(pipe, p))
+    # summaries = []
+    # for p in prompts: 
+    #     summaries.append(prompt(pipe, p))
 
-    output(summaries, 'output_one_record_gen.json')
+    # output(summaries, 'output_one_record.json')
+    gen_output = gen(prompts[0])
+    output(gen_output, 'output_gen_debug.json')
+    # print(prompt(pipe, prompts[0]))
 
 main()
