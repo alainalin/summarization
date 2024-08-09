@@ -1,33 +1,22 @@
 import os
 import json
+import time
+from typing import List
 import xml.etree.ElementTree as ET
 import torch
-import evaluate 
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM, LlamaTokenizerFast, PreTrainedTokenizerFast
-from transformers import StoppingCriteriaList, EosTokenCriteria
-
-# data_path = '/mnt/nfs/CanarySummarization/Data'
-data_path = '/home/alaina/Sandbox/summarization/example_data_one_patient'
-
-# model_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct'
-# tokenizer_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct/tokenizer.model'
-converted_model_path = '/home/alaina/Sandbox/summarization/llama'
-
-model = AutoModelForCausalLM.from_pretrained(converted_model_path, device_map='auto',)
-tokenizer = PreTrainedTokenizerFast.from_pretrained(converted_model_path, padding_side='left')
-tokenizer.pad_token = tokenizer.eos_token
-
-#############################################################################################
+# import evaluate 
+from transformers import pipeline, AutoModelForCausalLM, PreTrainedTokenizerFast
+import gc 
 
 ## NLP metrics
-bleu = evaluate.load('bleu') # completeness 
-rouge = evaluate.load('rouge') # most commonly used
-bertscore = evaluate.load('bertscore') # semantic/correctness
+# bleu = evaluate.load('bleu') # completeness 
+# rouge = evaluate.load('rouge') # most commonly used
+# bertscore = evaluate.load('bertscore') # semantic/correctness
 # medcon or use knowledge base to measure conceptual correctness
 
 #############################################################################################
 
-def getData(path: str, start=0, stop=None) -> list[str]: 
+def getData(path: str, start=0, stop=None) -> List[str]: 
     '''
     path :: directory path to the dataset to extract from
 
@@ -64,7 +53,7 @@ def output(data, filename: str):
     with open(filename, 'w') as outfile:
         outfile.write(json.dumps(data, indent=4))
 
-def read(filename: str) -> list:
+def read(filename: str) -> List:
     '''
     filename :: path json file to read and return data from 
 
@@ -77,7 +66,7 @@ def read(filename: str) -> list:
 
 #############################################################################################
 
-def makePrompts() -> list[list[dict]]:
+def makePrompts(data_path) -> List[List[dict]]:
     '''
     return list of prompts where each prompt (chat history) 
            is structured as a list of dict/json (each dict being a system, user, or assistant message)
@@ -101,41 +90,37 @@ def makePrompts() -> list[list[dict]]:
     
     return prompts
 
-def prompt(pipe, messages: list[dict]) -> list[dict]: 
+def prompt(pipe, messages: List[dict]) -> List[dict]: 
     '''
     messages :: chat history of system, user, and/or assistant messages used to prompt model 
 
     return model response, completed chat history
     '''
-    # tokenized_chat = tokenizer.apply_chat_template(chat, tokenize=True)
-    # no chat template in tokenizer_config.json --> add? 
-
     seq = pipe(
         messages,
         num_return_sequences=1,
-        eos_token_id=tokenizer.eos_token_id,
-        max_new_tokens=1024,
+        eos_token_id=[128001, 128009],
+        max_new_tokens=4096,
         truncation=True,
-        temperature=0.1, 
         do_sample=False,
-          repetition_penalty=1.1, 
+        repetition_penalty=1.1
     )
 
     return seq[0]['generated_text']
 
-def gen(messages: list[dict]): 
+def gen(model, tokenizer, messages: List[dict]): 
     model_inputs = tokenizer.apply_chat_template(
         messages, 
         add_generation_prompt=True, 
         return_tensors='pt'
-    )#.to(model.device) #.to('cuda')
+    ).to('cuda')
     
     attention_mask = torch.ones_like(model_inputs)
    
     generated_ids = model.generate(
         model_inputs, 
-        eos_token_id=tokenizer.eos_token_id,
-        max_new_tokens=1024, 
+        eos_token_id=[128001, 128009],
+        max_new_tokens=4096, 
         do_sample=False,
         attention_mask=attention_mask
     )
@@ -144,24 +129,74 @@ def gen(messages: list[dict]):
 
     return model_outputs
 
+#############################################################################################
+
+def device(model): 
+    '''
+    check which device (cuda/gpu or cpu) the model is using
+    '''
+    device = next(model.parameters()).device
+
+    if device.type == 'cuda':
+        print("Model using CUDA")
+    elif device.type == 'cpu':
+        print("Model using CPU")
+    else:
+        print(f"Model using unknown device type: {device.type}")
+
+def load(model_path: str, template_path: str):
+    '''
+    model_path :: path to hf config files for local llm 
+    template_path :: path to chat template file for tokenizer 
+
+    return model, tokenizer
+    ''' 
+    model = AutoModelForCausalLM.from_pretrained(model_path, device_map='auto')
+    # device(model)
+
+    tokenizer = PreTrainedTokenizerFast.from_pretrained(model_path, padding_side='left')
+    tokenizer.pad_token = tokenizer.eos_token
+    chat_template = open(template_path).read()
+    chat_template = chat_template.replace('    ', '').replace('\n', '')
+    tokenizer.chat_template = chat_template
+
+    return model, tokenizer
+
 def main(): 
+    start = time.time()
+
+    # data_path = '/mnt/nfs/CanarySummarization/Data'
+    data_path = '/home/alaina/Sandbox/summarization/example_data_one_patient'
+
+    # model_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct'
+    # tokenizer_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct/tokenizer.model'
+    converted_model_path = '/home/alaina/Sandbox/summarization/llama'
+
+    chat_template_path = '/home/alaina/Sandbox/summarization/chat_template.jinja'
+
+    model, tokenizer = load(converted_model_path, chat_template_path)
+
     pipe = pipeline(
-        'text-generation', # summarization pipeline not supported for llama
+        'text-generation',
         model=model, 
         tokenizer=tokenizer, 
         torch_dtype=torch.float16, 
-        device_map='auto',
+        device_map='auto'
     )
+    device(pipe.model)
 
-    prompts = makePrompts()
+    prompts = makePrompts(data_path)
 
-    # summaries = []
-    # for p in prompts: 
-    #     summaries.append(prompt(pipe, p))
+    summaries = []
+    for p in prompts: 
+        summaries.append(prompt(pipe, p))
 
-    # output(summaries, 'output_one_record.json')
-    gen_output = gen(prompts[0])
-    output(gen_output, 'output_gen_debug.json')
-    # print(prompt(pipe, prompts[0]))
+    output(summaries, 'output_one_record_prompt.json')
+    print('Execution time (seconds): ', time.time()-start) 
 
-main()
+    del model
+    gc.collect()
+    torch.cuda.empty_cache()
+
+if __name__ == "__main__": 
+    main()
