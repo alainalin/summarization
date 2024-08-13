@@ -165,14 +165,16 @@ def load(model_path: str, template_path: str):
 def main(): 
     start = time.time()
 
+    mimiciv_path = '/mnt/nfs/CanaryModels/Data/MIMIC-IV'
+
     # data_path = '/mnt/nfs/CanarySummarization/Data'
-    data_path = '/home/alaina/Sandbox/summarization/example_data_one_patient'
+    data_path = '/home/alaina/Sandbox/summarization/data/example_data_one_patient'
 
     # model_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct'
     # tokenizer_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct/tokenizer.model'
-    converted_model_path = '/home/alaina/Sandbox/summarization/llama'
+    converted_model_path = '/home/alaina/Sandbox/summarization/model/llama'
 
-    chat_template_path = '/home/alaina/Sandbox/summarization/chat_template.jinja'
+    chat_template_path = '/home/alaina/Sandbox/summarization/model/chat_template.jinja'
 
     model, tokenizer = load(converted_model_path, chat_template_path)
 
