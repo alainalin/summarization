@@ -7,12 +7,15 @@ import torch
 # import evaluate 
 from transformers import pipeline, AutoModelForCausalLM, PreTrainedTokenizerFast
 import gc 
+# from neo4j import GraphDatabase, RoutingControl 
 
 ## NLP metrics
 # bleu = evaluate.load('bleu') # completeness 
 # rouge = evaluate.load('rouge') # most commonly used
 # bertscore = evaluate.load('bertscore') # semantic/correctness
 # medcon or use knowledge base to measure conceptual correctness
+
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
 
 #############################################################################################
 
@@ -50,6 +53,7 @@ def output(data, filename: str):
     
     return nothing, output data into filename 
     '''
+    filename = os.getcwd() + filename
     with open(filename, 'w') as outfile:
         outfile.write(json.dumps(data, indent=4))
 
@@ -66,13 +70,49 @@ def read(filename: str) -> List:
 
 #############################################################################################
 
+def device(model): 
+    '''
+    check which device (cuda/gpu or cpu) the model is using
+    '''
+    device = next(model.parameters()).device
+
+    if device.type == 'cuda':
+        print("Model using CUDA")
+    elif device.type == 'cpu':
+        print("Model using CPU")
+    else:
+        print(f"Model using unknown device type: {device.type}")
+
+def load(model_path: str, template_path: str):
+    '''
+    model_path :: path to hf config files for local llm 
+    template_path :: path to chat template file for tokenizer 
+
+    return model, tokenizer
+    ''' 
+    # model_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct'
+    # tokenizer_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct/tokenizer.model'
+    
+    model = AutoModelForCausalLM.from_pretrained(model_path, device_map='auto')
+    # device(model)
+
+    tokenizer = PreTrainedTokenizerFast.from_pretrained(model_path, padding_side='left')
+    tokenizer.pad_token = tokenizer.eos_token
+    chat_template = open(template_path).read()
+    chat_template = chat_template.replace('    ', '').replace('\n', '')
+    tokenizer.chat_template = chat_template
+
+    return model, tokenizer
+
+#############################################################################################
+
 def makePrompts(data_path) -> List[List[dict]]:
     '''
     return list of prompts where each prompt (chat history) 
            is structured as a list of dict/json (each dict being a system, user, or assistant message)
     '''
-    # ehr = "'''".join(getData(data_path))
-    ehr = getData(data_path)
+    ehr = "'''".join(getData(data_path))
+    # ehr = getData(data_path)
 
     sysPrompts = ['You are a medical professional', 'You are a neurologist']
     userPrompts = ['Summarize the medical history: ', "Summarize the medical history related to CAD: "]
@@ -83,8 +123,10 @@ def makePrompts(data_path) -> List[List[dict]]:
         for up in userPrompts:
             p = [
                 {'role': 'system', 'content': sp}, 
+                {'role': 'user', 'content': "There are multiple reports which are separated by '''"},
                 {'role': 'user', 'content': up}, 
-                {'role': 'user', 'content': ehr[0]}
+                # {'role': 'user', 'content': ehr[0]}
+                {'role': 'user', 'content': ehr}
             ]
             prompts.append(p)
     
@@ -131,36 +173,7 @@ def gen(model, tokenizer, messages: List[dict]):
 
 #############################################################################################
 
-def device(model): 
-    '''
-    check which device (cuda/gpu or cpu) the model is using
-    '''
-    device = next(model.parameters()).device
 
-    if device.type == 'cuda':
-        print("Model using CUDA")
-    elif device.type == 'cpu':
-        print("Model using CPU")
-    else:
-        print(f"Model using unknown device type: {device.type}")
-
-def load(model_path: str, template_path: str):
-    '''
-    model_path :: path to hf config files for local llm 
-    template_path :: path to chat template file for tokenizer 
-
-    return model, tokenizer
-    ''' 
-    model = AutoModelForCausalLM.from_pretrained(model_path, device_map='auto')
-    # device(model)
-
-    tokenizer = PreTrainedTokenizerFast.from_pretrained(model_path, padding_side='left')
-    tokenizer.pad_token = tokenizer.eos_token
-    chat_template = open(template_path).read()
-    chat_template = chat_template.replace('    ', '').replace('\n', '')
-    tokenizer.chat_template = chat_template
-
-    return model, tokenizer
 
 def main(): 
     start = time.time()
@@ -170,10 +183,7 @@ def main():
     # data_path = '/mnt/nfs/CanarySummarization/Data'
     data_path = '/home/alaina/Sandbox/summarization/data/example_data_one_patient'
 
-    # model_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct'
-    # tokenizer_path = '/mnt/nfs/CanaryModels/Data/llama-models/models/llama3_1/Meta-Llama-3.1-8B-Instruct/tokenizer.model'
     converted_model_path = '/home/alaina/Sandbox/summarization/model/llama'
-
     chat_template_path = '/home/alaina/Sandbox/summarization/model/chat_template.jinja'
 
     model, tokenizer = load(converted_model_path, chat_template_path)
@@ -185,15 +195,16 @@ def main():
         torch_dtype=torch.float16, 
         device_map='auto'
     )
-    device(pipe.model)
+    # device(pipe.model)
 
     prompts = makePrompts(data_path)
+    output(prompts, '/prompts/all_records.json')
 
     summaries = []
     for p in prompts: 
         summaries.append(prompt(pipe, p))
 
-    output(summaries, 'output_one_record_prompt.json')
+    output(summaries, '/outputs/all_records_prompt.json')
     print('Execution time (seconds): ', time.time()-start) 
 
     del model
