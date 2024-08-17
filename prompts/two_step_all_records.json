@@ -6,11 +6,19 @@
         },
         {
             "role": "user",
+            "content": "Give me a comma separated list of the most relevant and most common medical terms, conditions, medications, treatments, and symptoms related to CAD"
+        },
+        {
+            "role": "assistant",
+            "content": "Here is a comprehensive list of medical terms, conditions, medications, treatments, and symptoms related to Coronary Artery Disease (CAD):\n\n**Medical Terms:**\n\nAngioplasty, Atherosclerosis, Cardiac Catheterization, Coronary Artery Bypass Grafting (CABG), Endarterectomy, Myocardial Infarction (MI), Percutaneous Transluminal Angioplasty (PTA)\n\n**Conditions:**\n\nHypertension, Hyperlipidemia, Diabetes Mellitus, Smoking, Family History of CAD, Obesity, Sedentary Lifestyle\n\n**Medications:**\n\nAspirin, Beta Blockers (e.g. Metoprolol), Calcium Channel Blockers (e.g. Verapamil), Cholesterol-Lowering Medications (e.g. Statins - Atorvastatin), Antiplatelet Agents (e.g. Clopidogrel), Nitrates (e.g. Nitroglycerin)\n\n**Treatments:**\n\nLifestyle Modifications (e.g. Diet, Exercise, Stress Management), Angiotensin-Converting Enzyme Inhibitors (ACEIs), Renin-Angiotensin System (RAS) Blockers, Cardiac Rehabilitation Programs\n\n**Symptoms:**\n\nChest Pain or Discomfort (Angina), Shortness of Breath, Fatigue, Lightheadedness or Dizziness, Palpitations, Cold Sweats, Nausea or Vomiting\n\nNote: This is not an exhaustive list, but it covers many of the most relevant and common medical terms, conditions, medications, treatments, and symptoms related to CAD.\n\nPlease keep in mind that this is for general information purposes only and should not be used as a substitute for professional medical advice. If you have any specific questions or concerns about CAD or any other medical condition, please consult with a qualified healthcare professional."
+        },
+        {
+            "role": "user",
             "content": "There are multiple reports which are separated by '''"
         },
         {
             "role": "user",
-            "content": "Summarize the medical history"
+            "content": "Summarize the medical history while retaining any of the terms in the list above only if they existed in the original reports"
         },
         {
             "role": "user",
@@ -24,11 +32,19 @@
         },
         {
             "role": "user",
+            "content": "Give me a comma separated list of the most relevant and most common medical terms, conditions, medications, treatments, and symptoms related to CAD"
+        },
+        {
+            "role": "assistant",
+            "content": "Here is a comprehensive list of medical terms, conditions, medications, treatments, and symptoms related to Coronary Artery Disease (CAD):\n\n**Medical Terms:**\n\nAngioplasty, Atherosclerosis, Cardiac Catheterization, Coronary Artery Bypass Grafting (CABG), Endarterectomy, Myocardial Infarction (MI), Percutaneous Transluminal Angioplasty (PTA)\n\n**Conditions:**\n\nHypertension, Hyperlipidemia, Diabetes Mellitus, Smoking, Family History of CAD, Obesity, Sedentary Lifestyle\n\n**Medications:**\n\nAspirin, Beta Blockers (e.g. Metoprolol), Calcium Channel Blockers (e.g. Verapamil), Cholesterol-Lowering Medications (e.g. Statins - Atorvastatin), Antiplatelet Agents (e.g. Clopidogrel), Nitrates (e.g. Nitroglycerin)\n\n**Treatments:**\n\nLifestyle Modifications (e.g. Diet, Exercise, Stress Management), Angiotensin-Converting Enzyme Inhibitors (ACEIs), Renin-Angiotensin System (RAS) Blockers, Cardiac Rehabilitation Programs\n\n**Symptoms:**\n\nChest Pain or Discomfort (Angina), Shortness of Breath, Fatigue, Lightheadedness or Dizziness, Palpitations, Cold Sweats, Nausea or Vomiting\n\nNote: This is not an exhaustive list, but it covers many of the most relevant and common medical terms, conditions, medications, treatments, and symptoms related to CAD.\n\nPlease keep in mind that this is for general information purposes only and should not be used as a substitute for professional medical advice. If you have any specific questions or concerns about CAD or any other medical condition, please consult with a qualified healthcare professional."
+        },
+        {
+            "role": "user",
             "content": "There are multiple reports which are separated by '''"
         },
         {
             "role": "user",
-            "content": "Summarize the medical history related to CAD"
+            "content": "Summarize the medical history related to CAD while retaining any of the terms in the list above only if they existed in the original reports"
         },
         {
             "role": "user",
@@ -38,7 +54,15 @@
     [
         {
             "role": "system",
-            "content": "You are a neurologist"
+            "content": "You are a medical professional"
+        },
+        {
+            "role": "user",
+            "content": "Give me a comma separated list of the most relevant and most common medical terms, conditions, medications, treatments, and symptoms related to CAD"
+        },
+        {
+            "role": "assistant",
+            "content": "Here is a comprehensive list of medical terms, conditions, medications, treatments, and symptoms related to Coronary Artery Disease (CAD):\n\n**Medical Terms:**\n\nAngioplasty, Atherosclerosis, Cardiac Catheterization, Coronary Artery Bypass Grafting (CABG), Endarterectomy, Myocardial Infarction (MI), Percutaneous Transluminal Angioplasty (PTA)\n\n**Conditions:**\n\nHypertension, Hyperlipidemia, Diabetes Mellitus, Smoking, Family History of CAD, Obesity, Sedentary Lifestyle\n\n**Medications:**\n\nAspirin, Beta Blockers (e.g. Metoprolol), Calcium Channel Blockers (e.g. Verapamil), Cholesterol-Lowering Medications (e.g. Statins - Atorvastatin), Antiplatelet Agents (e.g. Clopidogrel), Nitrates (e.g. Nitroglycerin)\n\n**Treatments:**\n\nLifestyle Modifications (e.g. Diet, Exercise, Stress Management), Angiotensin-Converting Enzyme Inhibitors (ACEIs), Renin-Angiotensin System (RAS) Blockers, Cardiac Rehabilitation Programs\n\n**Symptoms:**\n\nChest Pain or Discomfort (Angina), Shortness of Breath, Fatigue, Lightheadedness or Dizziness, Palpitations, Cold Sweats, Nausea or Vomiting\n\nNote: This is not an exhaustive list, but it covers many of the most relevant and common medical terms, conditions, medications, treatments, and symptoms related to CAD.\n\nPlease keep in mind that this is for general information purposes only and should not be used as a substitute for professional medical advice. If you have any specific questions or concerns about CAD or any other medical condition, please consult with a qualified healthcare professional."
         },
         {
             "role": "user",
@@ -46,7 +70,7 @@
         },
         {
             "role": "user",
-            "content": "Summarize the medical history"
+            "content": "Summarize the medical history while retaining any of the terms in the list above only if they existed in the original reports"
         },
         {
             "role": "user",
@@ -56,7 +80,15 @@
     [
         {
             "role": "system",
-            "content": "You are a neurologist"
+            "content": "You are a medical professional"
+        },
+        {
+            "role": "user",
+            "content": "Give me a comma separated list of the most relevant and most common medical terms, conditions, medications, treatments, and symptoms related to CAD"
+        },
+        {
+            "role": "assistant",
+            "content": "Here is a comprehensive list of medical terms, conditions, medications, treatments, and symptoms related to Coronary Artery Disease (CAD):\n\n**Medical Terms:**\n\nAngioplasty, Atherosclerosis, Cardiac Catheterization, Coronary Artery Bypass Grafting (CABG), Endarterectomy, Myocardial Infarction (MI), Percutaneous Transluminal Angioplasty (PTA)\n\n**Conditions:**\n\nHypertension, Hyperlipidemia, Diabetes Mellitus, Smoking, Family History of CAD, Obesity, Sedentary Lifestyle\n\n**Medications:**\n\nAspirin, Beta Blockers (e.g. Metoprolol), Calcium Channel Blockers (e.g. Verapamil), Cholesterol-Lowering Medications (e.g. Statins - Atorvastatin), Antiplatelet Agents (e.g. Clopidogrel), Nitrates (e.g. Nitroglycerin)\n\n**Treatments:**\n\nLifestyle Modifications (e.g. Diet, Exercise, Stress Management), Angiotensin-Converting Enzyme Inhibitors (ACEIs), Renin-Angiotensin System (RAS) Blockers, Cardiac Rehabilitation Programs\n\n**Symptoms:**\n\nChest Pain or Discomfort (Angina), Shortness of Breath, Fatigue, Lightheadedness or Dizziness, Palpitations, Cold Sweats, Nausea or Vomiting\n\nNote: This is not an exhaustive list, but it covers many of the most relevant and common medical terms, conditions, medications, treatments, and symptoms related to CAD.\n\nPlease keep in mind that this is for general information purposes only and should not be used as a substitute for professional medical advice. If you have any specific questions or concerns about CAD or any other medical condition, please consult with a qualified healthcare professional."
         },
         {
             "role": "user",
@@ -64,7 +96,7 @@
         },
         {
             "role": "user",
-            "content": "Summarize the medical history related to CAD"
+            "content": "Summarize the medical history related to CAD while retaining any of the terms in the list above only if they existed in the original reports"
         },
         {
             "role": "user",

@@ -63,6 +63,7 @@ def read(filename: str) -> List:
 
     return list of data, read data from filename
     '''
+    filename = os.getcwd() + filename
     with open(filename, 'r') as file:
         data = json.load(file)
 
@@ -115,7 +116,7 @@ def makePrompts(data_path) -> List[List[dict]]:
     # ehr = getData(data_path)
 
     sysPrompts = ['You are a medical professional', 'You are a neurologist']
-    userPrompts = ['Summarize the medical history: ', "Summarize the medical history related to CAD: "]
+    userPrompts = ['Summarize the medical history', "Summarize the medical history related to CAD"]
 
     prompts = []
 
@@ -173,13 +174,45 @@ def gen(model, tokenizer, messages: List[dict]):
 
 #############################################################################################
 
+def makeTwoStepPrompts(pipe: pipeline, key: str): 
+    '''
+    pipe :: hf transformer pipeline to use for model inference, Llama3.1
+    key :: the key word/condition/term (ex. epilepsy, ex. respiratory) to summarize the patient's history wrt. to
+    
+    generate and store chat history prompts for two step prompting (adapt prompts from one step prompting stage)
+    '''
+    summPrompts = read('/prompts/all_records.json')
 
+    keyPrompts = [
+        {'role': 'system', 'content' : 'You are a medical professional'},
+        {'role': 'user', 'content': 'Give me a comma separated list of the most relevant and most common medical terms, conditions, medications, treatments, and symptoms related to '+key}
+    ]
+
+    assistantResponse = prompt(pipe, keyPrompts)[-1]
+
+    chats = []
+    for p in summPrompts: 
+        chat = keyPrompts + [assistantResponse] + p[1:]
+        p[-2]['content'] += ' while retaining any of the terms in the list above only if they existed in the original reports'
+        
+        chats.append(chat)
+
+    output(chats, '/prompts/two_step_all_records.json')
+
+def inference(pipe: pipeline, chats: List[List[dict]], outfile: str): 
+    '''
+    pipe :: hf transformers pipeline to use for model inference, Llama3.1
+    chats :: list of chat histories/prompts to pass to model and run inference on (chat completion)
+    outfile :: name of output file to write model reponses to, filepath relative to current directory 
+    '''
+    summaries = []
+    for chat in chats: 
+        summaries.append(prompt(pipe, chat))
+
+    output(summaries, outfile)
 
 def main(): 
-    start = time.time()
-
     mimiciv_path = '/mnt/nfs/CanaryModels/Data/MIMIC-IV'
-
     # data_path = '/mnt/nfs/CanarySummarization/Data'
     data_path = '/home/alaina/Sandbox/summarization/data/example_data_one_patient'
 
@@ -197,14 +230,15 @@ def main():
     )
     # device(pipe.model)
 
-    prompts = makePrompts(data_path)
-    output(prompts, '/prompts/all_records.json')
+    start = time.time()
 
-    summaries = []
-    for p in prompts: 
-        summaries.append(prompt(pipe, p))
+    # one step prompting -> directly asking the model to summarize wrt. key word
+    # inference(pipe, read('/prompts/all_records.json'), '/outputs/all_records_prompt.json')
 
-    output(summaries, '/outputs/all_records_prompt.json')
+    # two step prompting -> get set of words related to key word, keep set of words when summarizing 
+    makeTwoStepPrompts(pipe, 'CAD')
+    inference(pipe, read('/prompts/two_step_all_records.json'), '/outputs/two_step/all_records.json')
+
     print('Execution time (seconds): ', time.time()-start) 
 
     del model
